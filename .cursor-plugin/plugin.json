@@ -1,0 +1,10 @@
+{
+  "name": "ps-vita-porter",
+  "version": "0.1.0",
+  "description": "Port a C/C++ game whose full source you have (typically a universal-decompiler reconstruction) to PS Vita as a .vpk with an AI agent: project scan, intake questions with recommendations, VitaSDK builds (native or Docker), LiveArea assets, .vpk checks, asset conversion, a PC Vita-simulation profile, Vita3K runs, deployment and logs over vitacompanion, a publish guard and a shared knowledge base.",
+  "author": {
+    "name": "hammerill",
+    "url": "https://github.com/hammerill"
+  },
+  "keywords": ["ps-vita", "vitasdk", "vitagl", "homebrew", "porting", "vpk", "livearea", "vita3k", "sdl", "cmake", "knowledge-base", "agent-skills"]
+}

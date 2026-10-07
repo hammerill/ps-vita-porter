@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# ps-vita-porter CLI launcher. Works from a clone, a Claude Code plugin install, or a PATH symlink.
+#   vita init | vita scan | vita tools check | vita build | vita vpk check build-vita/*.vpk | vita sim --shot ...
+# Uses uv when available (it creates the project's .venv with PyYAML on first run);
+# otherwise the system python3 (>= 3.12), which then needs `pip install pyyaml`.
+# Derived from universal-modder's bin/um (MIT, Copyright (c) 2026 Rehan and universal-modder contributors),
+# via universal-decompiler's bin/ud.
+set -euo pipefail
+SRC="${BASH_SOURCE[0]}"
+while [ -L "$SRC" ]; do
+  DIR="$(cd -P "$(dirname "$SRC")" && pwd)"
+  SRC="$(readlink "$SRC")"
+  [[ "$SRC" != /* ]] && SRC="$DIR/$SRC"
+done
+ROOT="$(cd -P "$(dirname "$SRC")/.." && pwd)"
+if command -v uv >/dev/null 2>&1 && [ -z "${VITA_PORTER_NO_UV:-}" ]; then
+  exec uv run --quiet --project "$ROOT" python -m vita_porter "$@"
+fi
+PY="$(command -v python3 || command -v python)"
+PYTHONPATH="$ROOT${PYTHONPATH:+:$PYTHONPATH}" exec "$PY" -m vita_porter "$@"

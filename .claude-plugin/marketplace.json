@@ -1,0 +1,16 @@
+{
+  "$schema": "https://code.claude.com/schemas/marketplace.json",
+  "name": "ps-vita-porter",
+  "description": "Skills, the vita CLI and a shared knowledge base for porting full-source C/C++ games to PS Vita with AI agents.",
+  "owner": {
+    "name": "hammerill",
+    "url": "https://github.com/hammerill"
+  },
+  "plugins": [
+    {
+      "name": "ps-vita-porter",
+      "source": "./",
+      "description": "Port a C/C++ game whose full source you have (typically a universal-decompiler reconstruction) to PS Vita as a .vpk with an AI agent: project scan, intake questions with recommendations, VitaSDK builds (native or Docker), LiveArea assets, .vpk checks, asset conversion, a PC Vita-simulation profile, Vita3K runs, deployment and logs over vitacompanion, a publish guard and a shared knowledge base."
+    }
+  ]
+}

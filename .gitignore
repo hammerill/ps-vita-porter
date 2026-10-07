@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.py[oc]
+uv.lock
+.env
+build/
+build-vita/
+build-sim/
+dist/
+wheels/
+*.egg-info
+.pytest_cache/
+.ruff_cache/
+/scratch/
+*.vpk
+# the CLI launcher lives in bin/
+!bin/

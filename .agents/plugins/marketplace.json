@@ -1,0 +1,20 @@
+{
+  "name": "ps-vita-porter",
+  "interface": {
+    "displayName": "ps-vita-porter"
+  },
+  "plugins": [
+    {
+      "name": "ps-vita-porter",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/hammerill/ps-vita-porter.git"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

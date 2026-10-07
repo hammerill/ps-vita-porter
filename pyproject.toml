@@ -1,0 +1,44 @@
+[project]
+name = "ps-vita-porter"
+version = "0.1.0"
+description = "Skills, the `vita` CLI and a shared knowledge base that let an AI coding agent port a C/C++ game whose full source you have to PS Vita as a .vpk: project scan and intake, VitaSDK builds (native or Docker), LiveArea assets, .vpk checks, asset conversion, a PC Vita-simulation profile, Vita3K runs, deployment over vitacompanion and a publish guard."
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "hammerill", email = "kyrylo@hammerill.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "pyyaml>=6",
+]
+
+[project.scripts]
+vita = "vita_porter.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/hammerill/ps-vita-porter"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.6",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["vita_porter"]
+
+[tool.ruff]
+line-length = 140
+target-version = "py312"
+extend-exclude = [".claude", ".agents", "examples"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B"]
+ignore = ["E501", "E731", "B008"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

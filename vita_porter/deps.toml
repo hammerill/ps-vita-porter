@@ -1,0 +1,508 @@
+# Dependency knowledge for `vita scan`: how a library shows up in source (#include regexes, CMake names) and what to
+# do about it on the Vita. status:
+#   available       a vdpm package exists (vdpm = the package)
+#   header-only     nothing to build
+#   build           no package, but it's portable C/C++: compile it into the port
+#   replace         no Vita build: swap for the named replacement behind the platform layer
+#   strip           an online/platform service the Vita port drops (ask at intake)
+#   platform-layer  an OS/console API: reimplemented in platform/vita/
+#   blocker         the port can't proceed without replacing a whole subsystem (say so at intake)
+# vdpm package list: snapshot of the VitaSDK 2026.08 channel (vdpm search "", 2026-10-07).
+
+[vdpm]
+channel = "VitaSDK 2026.08"
+checked = "2026-10-07"
+packages = ["ALmixer", "FluidLite", "SceShaccCgExt", "TinyGL", "asio", "assimp", "boost", "box2d", "bullet", "bzip2", "cpr", "cpython", "cpython3", "curl", "curl-mbedtls", "curlpp", "enet", "expat", "faad2", "ffmpeg", "fftw", "flac", "flatbuffers", "fluidsynth-lite", "fmt", "freetype", "fribidi", "gifdec", "glm", "harfbuzz", "henkaku", "icu4c", "imgui", "imgui-vita2d", "jansson", "jsoncpp", "kubridge", "kuio", "lame", "libarchive", "libass", "libbaremetal", "libconfig", "libdebugnet", "libexif", "libftpvita", "libimagequant", "libintl", "libjpeg-turbo", "libk", "libmad", "libmathneon", "libmikmod", "libmodplug", "libmpeg2", "libogg", "libopenmpt", "libpcre2", "libpng", "libsamplerate", "libsigc++-2.0", "libsigc++-3.0", "libsmb2", "libsndfile", "libsodium", "libtheora", "libtiff", "libtoloader", "libtremor", "libunistring", "libvita2d", "libvita2d_ext", "libvita2d_vgl", "libvorbis", "libvpx", "libwebp", "libxml2", "libxmp", "libxmp-lite", "libzip", "luajit", "mbedtls", "mini18n", "minizip", "mpg123", "onigmo", "openal-soft", "opensles", "openssl", "openssl-1.1.1", "opus", "opusfile", "physfs", "pib", "pixman", "polarssl", "quickjs-ng", "quirc", "sdl", "sdl2", "sdl2_gfx", "sdl2_image", "sdl2_mixer", "sdl2_mixer_ext", "sdl2_net", "sdl2_ttf", "sdl2_vitagl", "sdl3", "sdl3_image", "sdl3_ttf", "sdl_gfx", "sdl_image", "sdl_mixer", "sdl_net", "sdl_ttf", "soloud", "speexdsp", "taihen", "taipool", "tinyxml2", "un7zip", "unrar", "uvdb", "vita-libdl", "vita-rss-libdl", "vitaGL", "vitaShaRK", "vitagprof", "websocketpp", "wslay", "xz", "yaml-cpp", "zlib", "zstd"]
+
+# ---------------------------------------------------------------------------- SDL family
+[deps.sdl2]
+name = "SDL2"
+includes = ['SDL2/SDL\w*\.h']
+cmake = ["SDL2"]
+status = "available"
+vdpm = "sdl2"
+note = "sdl2 (GXM renderer, no GL context) or sdl2_vitagl (SDL2 with the vitaGL video backend: needed for SDL_GL_CreateContext). They conflict; the vitasdk Docker image ships sdl2_vitagl."
+
+[deps.sdl3]
+name = "SDL3"
+includes = ['SDL3/SDL\w*\.h']
+cmake = ["SDL3"]
+status = "available"
+vdpm = "sdl3"
+note = "SDL3 3.4.x has a Vita port; check its video backend before relying on SDL's GL context, or drive vitaGL directly."
+
+[deps.sdl12]
+name = "SDL 1.2"
+includes = ['SDL/SDL\.h']
+cmake = ["SDL"]
+status = "available"
+vdpm = "sdl"
+
+[deps.sdl2_mixer]
+name = "SDL2_mixer"
+includes = ['SDL2/SDL_mixer\.h', '"SDL_mixer\.h"']
+cmake = ["SDL2_mixer"]
+status = "available"
+vdpm = "sdl2_mixer"
+
+[deps.sdl2_image]
+name = "SDL2_image"
+includes = ['SDL2/SDL_image\.h', '"SDL_image\.h"']
+cmake = ["SDL2_image"]
+status = "available"
+vdpm = "sdl2_image"
+
+[deps.sdl2_ttf]
+name = "SDL2_ttf"
+includes = ['SDL2/SDL_ttf\.h', '"SDL_ttf\.h"']
+cmake = ["SDL2_ttf"]
+status = "available"
+vdpm = "sdl2_ttf"
+
+[deps.sdl2_net]
+name = "SDL2_net"
+includes = ['SDL2/SDL_net\.h', '"SDL_net\.h"']
+cmake = ["SDL2_net"]
+status = "available"
+vdpm = "sdl2_net"
+
+[deps.sdl3_image]
+name = "SDL3_image"
+includes = ['SDL3_image/']
+cmake = ["SDL3_image"]
+status = "available"
+vdpm = "sdl3_image"
+
+[deps.sdl3_ttf]
+name = "SDL3_ttf"
+includes = ['SDL3_ttf/']
+cmake = ["SDL3_ttf"]
+status = "available"
+vdpm = "sdl3_ttf"
+
+[deps.sdl3_mixer]
+name = "SDL3_mixer"
+includes = ['SDL3_mixer/']
+cmake = ["SDL3_mixer"]
+status = "build"
+replacement = "no vdpm package: build SDL3_mixer from source against vdpm's sdl3 (+ libvorbis/flac/mpg123), or play audio through SDL3's own audio streams"
+
+# ---------------------------------------------------------------------------- graphics
+[deps.opengl]
+name = "OpenGL"
+includes = ['GL/gl\.h', 'OpenGL/gl3?\.h', 'GL/glcorearb\.h']
+cmake = ["OpenGL"]
+status = "available"
+vdpm = "vitaGL"
+note = "vitaGL implements a subset of OpenGL (fixed function + shaders); see references/vitagl.md"
+
+[deps.gles]
+name = "OpenGL ES 2/3"
+includes = ['GLES[23]/gl[23]?\.h']
+status = "available"
+vdpm = "vitaGL"
+note = "vitaGL covers most of the GLES2 surface; ES3-only features need checking"
+
+[deps.glew]
+name = "GLEW"
+includes = ['GL/glew\.h']
+cmake = ["GLEW"]
+status = "replace"
+replacement = "nothing to load on Vita: include vitaGL.h and compile glewInit() out (#ifndef __vita__)"
+
+[deps.glad]
+name = "glad"
+includes = ['glad/(glad|gl)\.h']
+status = "replace"
+replacement = "include vitaGL.h on Vita instead of glad; skip gladLoadGL*"
+
+[deps.glu]
+name = "GLU"
+includes = ['GL/glu\.h']
+status = "replace"
+replacement = "check which glu* helpers vitaGL.h declares; reimplement the rest (gluPerspective/gluLookAt are a few lines)"
+
+[deps.glfw]
+name = "GLFW"
+includes = ['GLFW/glfw3\.h']
+cmake = ["glfw3", "glfw"]
+status = "replace"
+replacement = "no Vita port: window/context -> vglInit*, input -> SceCtrl/SceTouch (or SDL), behind the platform layer"
+
+[deps.sfml]
+name = "SFML"
+includes = ['SFML/']
+cmake = ["SFML"]
+status = "replace"
+replacement = "no Vita port: replace window/graphics/audio/input with SDL + vitaGL behind a platform layer"
+
+[deps.raylib]
+name = "raylib"
+includes = ['raylib\.h']
+cmake = ["raylib"]
+status = "replace"
+replacement = "no vdpm package: check community Vita forks first, else replace with SDL + vitaGL"
+
+[deps.bgfx]
+name = "bgfx"
+includes = ['bgfx/bgfx\.h']
+status = "replace"
+replacement = "no Vita renderer: write a GL renderer path for vitaGL"
+
+[deps.vulkan]
+name = "Vulkan"
+includes = ['vulkan/vulkan(_core)?\.h']
+cmake = ["Vulkan"]
+status = "blocker"
+replacement = "the Vita has no Vulkan: the renderer must get an OpenGL (vitaGL) backend"
+
+[deps.metal]
+name = "Metal"
+includes = ['Metal/Metal\.h', 'MetalKit/']
+status = "blocker"
+replacement = "rewrite the renderer for OpenGL (vitaGL)"
+
+[deps.d3d]
+name = "Direct3D"
+includes = ['d3d(8|9|10|11|12)\.h', 'd3dx9\w*\.h', 'dxgi\.h', 'd3dcompiler\.h']
+status = "blocker"
+replacement = "a GL (vitaGL) renderer behind the platform layer; HLSL shaders -> CG/GLSL"
+
+# ---------------------------------------------------------------------------- audio
+[deps.openal]
+name = "OpenAL"
+includes = ['AL/al\.h', 'OpenAL/al\.h']
+cmake = ["OpenAL"]
+status = "available"
+vdpm = "openal-soft"
+
+[deps.vorbis]
+name = "libvorbis"
+includes = ['vorbis/vorbisfile\.h', 'vorbis/codec\.h']
+cmake = ["Vorbis"]
+status = "available"
+vdpm = "libvorbis"
+note = "libtremor (integer decoder) is also packaged and cheaper on the Vita's CPU"
+
+[deps.ogg]
+name = "libogg"
+includes = ['ogg/ogg\.h']
+status = "available"
+vdpm = "libogg"
+
+[deps.opus]
+name = "Opus"
+includes = ['opus/opus\.h', 'opusfile\.h']
+status = "available"
+vdpm = "opusfile"
+
+[deps.flac]
+name = "FLAC"
+includes = ['FLAC/']
+status = "available"
+vdpm = "flac"
+
+[deps.mpg123]
+name = "mpg123"
+includes = ['mpg123\.h']
+status = "available"
+vdpm = "mpg123"
+
+[deps.modplug]
+name = "libmodplug / libxmp / libopenmpt"
+includes = ['libmodplug/', 'modplug\.h', 'xmp\.h', 'libopenmpt/']
+status = "available"
+vdpm = "libmodplug"
+
+[deps.sndfile]
+name = "libsndfile"
+includes = ['sndfile\.h']
+status = "available"
+vdpm = "libsndfile"
+
+[deps.soloud]
+name = "SoLoud"
+includes = ['soloud\.h']
+status = "available"
+vdpm = "soloud"
+
+[deps.fmod]
+name = "FMOD"
+includes = ['fmod(_studio)?\.h(pp)?', 'fmod_errors\.h']
+status = "replace"
+replacement = "no homebrew Vita build: SDL_mixer, OpenAL Soft or SoLoud behind the audio layer; banks need converting"
+
+[deps.bass]
+name = "BASS"
+includes = ['bass\.h']
+status = "replace"
+replacement = "no Vita build: SDL_mixer / libvorbis / mpg123 behind the audio layer"
+
+[deps.wwise]
+name = "Wwise"
+includes = ['AK/SoundEngine/']
+status = "replace"
+replacement = "no homebrew Vita build: decode the banks' streams offline and play them through SDL audio"
+
+[deps.dsound]
+name = "DirectSound / XAudio2 / waveOut"
+includes = ['dsound\.h', 'xaudio2\.h', 'mmsystem\.h']
+status = "platform-layer"
+replacement = "SDL audio (or SceAudio) in platform/vita/"
+
+# ---------------------------------------------------------------------------- input / OS
+[deps.dinput]
+name = "DirectInput / XInput"
+includes = ['dinput\.h', 'xinput\.h']
+status = "platform-layer"
+replacement = "SceCtrl / SceTouch / SceMotion (vitaport kit) behind the platform layer"
+
+[deps.win32]
+name = "Win32 API"
+includes = ['windows\.h', 'winuser\.h', 'shlobj\.h']
+status = "platform-layer"
+replacement = "everything Win32 goes behind the platform layer (window, input, files, time, threads)"
+
+[deps.x11]
+name = "X11"
+includes = ['X11/Xlib\.h']
+status = "platform-layer"
+replacement = "window/input through the platform layer"
+
+[deps.qt]
+name = "Qt"
+includes = ['Q(Application|Widget|MainWindow|OpenGLWidget)\b', 'QtCore/', 'QtGui/', 'QtWidgets/']
+cmake = ["Qt5", "Qt6"]
+status = "blocker"
+replacement = "no Vita port: the UI must be rewritten on SDL/vitaGL"
+
+[deps.wx]
+name = "wxWidgets"
+includes = ['wx/wx\.h', 'wx/wxprec\.h']
+status = "blocker"
+replacement = "no Vita port: the UI must be rewritten"
+
+[deps.gtk]
+name = "GTK"
+includes = ['gtk/gtk\.h']
+status = "blocker"
+replacement = "no Vita port: the UI must be rewritten"
+
+# ---------------------------------------------------------------------------- data / formats
+[deps.zlib]
+name = "zlib"
+includes = ['zlib\.h']
+cmake = ["ZLIB"]
+status = "available"
+vdpm = "zlib"
+
+[deps.libpng]
+name = "libpng"
+includes = ['png\.h']
+cmake = ["PNG"]
+status = "available"
+vdpm = "libpng"
+
+[deps.jpeg]
+name = "libjpeg(-turbo)"
+includes = ['jpeglib\.h', 'turbojpeg\.h']
+cmake = ["JPEG"]
+status = "available"
+vdpm = "libjpeg-turbo"
+
+[deps.webp]
+name = "libwebp"
+includes = ['webp/decode\.h']
+status = "available"
+vdpm = "libwebp"
+
+[deps.freetype]
+name = "FreeType"
+includes = ['ft2build\.h', 'freetype/freetype\.h']
+cmake = ["Freetype"]
+status = "available"
+vdpm = "freetype"
+
+[deps.harfbuzz]
+name = "HarfBuzz"
+includes = ['hb\.h', 'harfbuzz/']
+status = "available"
+vdpm = "harfbuzz"
+
+[deps.bzip2]
+name = "bzip2"
+includes = ['bzlib\.h']
+status = "available"
+vdpm = "bzip2"
+
+[deps.xz]
+name = "xz / liblzma"
+includes = ['lzma\.h']
+status = "available"
+vdpm = "xz"
+
+[deps.zstd]
+name = "zstd"
+includes = ['zstd\.h']
+status = "available"
+vdpm = "zstd"
+
+[deps.libzip]
+name = "libzip / minizip"
+includes = ['zip\.h', 'minizip/', 'unzip\.h']
+status = "available"
+vdpm = "libzip"
+
+[deps.physfs]
+name = "PhysicsFS"
+includes = ['physfs\.h']
+status = "available"
+vdpm = "physfs"
+
+[deps.stb]
+name = "stb"
+includes = ['stb_\w+\.h']
+status = "header-only"
+
+[deps.glm]
+name = "GLM"
+includes = ['glm/glm\.hpp', 'glm/']
+status = "header-only"
+note = "also packaged (vdpm glm)"
+
+[deps.imgui]
+name = "Dear ImGui"
+includes = ['imgui\.h']
+status = "available"
+vdpm = "imgui"
+
+[deps.box2d]
+name = "Box2D"
+includes = ['box2d/box2d\.h', 'Box2D/Box2D\.h']
+status = "available"
+vdpm = "box2d"
+
+[deps.bullet]
+name = "Bullet"
+includes = ['btBulletDynamicsCommon\.h']
+status = "available"
+vdpm = "bullet"
+
+[deps.physx]
+name = "PhysX / Havok"
+includes = ['PxPhysicsAPI\.h', 'Physics2012/', 'Common/Base/hkBase\.h']
+status = "blocker"
+replacement = "no Vita build: replace with Bullet (packaged) and re-tune"
+
+[deps.assimp]
+name = "Assimp"
+includes = ['assimp/']
+status = "available"
+vdpm = "assimp"
+
+[deps.lua]
+name = "Lua"
+includes = ['lua\.h', 'lauxlib\.h', 'lua\.hpp']
+status = "build"
+replacement = "plain Lua isn't packaged (luajit is): compile Lua's C sources into the port"
+
+[deps.luajit]
+name = "LuaJIT"
+includes = ['luajit\.h']
+status = "available"
+vdpm = "luajit"
+
+[deps.sqlite]
+name = "SQLite"
+includes = ['sqlite3\.h']
+status = "build"
+replacement = "not packaged: compile the amalgamation (sqlite3.c) into the port"
+
+[deps.yaml]
+name = "yaml-cpp"
+includes = ['yaml-cpp/']
+status = "available"
+vdpm = "yaml-cpp"
+
+[deps.json]
+name = "jsoncpp / jansson / nlohmann"
+includes = ['json/json\.h', 'jansson\.h', 'nlohmann/json\.hpp']
+status = "available"
+vdpm = "jsoncpp"
+note = "nlohmann/json is header-only"
+
+[deps.xml]
+name = "tinyxml2 / libxml2 / expat"
+includes = ['tinyxml2\.h', 'libxml/', 'expat\.h']
+status = "available"
+vdpm = "tinyxml2"
+
+[deps.fmt]
+name = "fmt"
+includes = ['fmt/format\.h', 'fmt/core\.h']
+status = "available"
+vdpm = "fmt"
+
+[deps.boost]
+name = "Boost"
+includes = ['boost/']
+cmake = ["Boost"]
+status = "available"
+vdpm = "boost"
+note = "header-only parts just work; check the compiled libraries the project links"
+
+[deps.ffmpeg]
+name = "FFmpeg (libav*)"
+includes = ['libavcodec/', 'libavformat/']
+status = "available"
+vdpm = "ffmpeg"
+
+[deps.theora]
+name = "Theora"
+includes = ['theora/']
+status = "available"
+vdpm = "libtheora"
+
+[deps.bink]
+name = "Bink video"
+includes = ['bink\.h']
+status = "replace"
+replacement = "no Vita build: re-encode videos the user owns locally (Theora/H.264 via SceAvPlayer) or skip them (ask at intake)"
+
+# ---------------------------------------------------------------------------- network / services
+[deps.curl]
+name = "libcurl"
+includes = ['curl/curl\.h']
+cmake = ["CURL"]
+status = "available"
+vdpm = "curl"
+
+[deps.openssl]
+name = "OpenSSL / mbedTLS"
+includes = ['openssl/', 'mbedtls/']
+status = "available"
+vdpm = "openssl"
+
+[deps.enet]
+name = "ENet"
+includes = ['enet/enet\.h']
+status = "available"
+vdpm = "enet"
+
+[deps.steam]
+name = "Steamworks"
+includes = ['steam/steam_api\.h', 'steam_api\.h']
+status = "strip"
+replacement = "no Steam on Vita: compile the Steamworks layer out (achievements, cloud saves, overlay)"
+
+[deps.discord]
+name = "Discord RPC / Game SDK"
+includes = ['discord_rpc\.h', 'discord\.h', 'discord_game_sdk\.h']
+status = "strip"
+replacement = "compile it out"
+
+[deps.galaxy]
+name = "GOG Galaxy / Epic Online Services"
+includes = ['galaxy/GalaxyApi\.h', 'eos_sdk\.h']
+status = "strip"
+replacement = "compile it out"

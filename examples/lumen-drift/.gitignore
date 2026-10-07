@@ -1,0 +1,10 @@
+# >>> ps-vita-porter (vita init)
+# Vita builds, the PC simulation profile and packages (a .vpk can contain game assets)
+build-vita/
+build-sim/
+*.vpk
+*.psp2dmp
+# <<< ps-vita-porter
+build/
+build-vita-ext/
+build-vita-docker/

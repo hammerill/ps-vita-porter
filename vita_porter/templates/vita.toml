@@ -1,0 +1,59 @@
+# ps-vita-porter settings for this port (read by `vita`; written by `vita init`, idempotent).
+# The intake answers and their reasons live in PORT_PLAN.md; the values the tools need are mirrored here.
+
+[app]
+title_id = "{title_id}"           # 4 uppercase letters + 5 digits; confirmed at intake (check: vita scan)
+name = "{name}"                   # display name under the LiveArea bubble
+version = "01.00"                 # ##.## (param.sfo APP_VER)
+data_folder = "{data_folder}"     # ux0:data/<data_folder>/: saves, config, logs, and the external assets
+assets = "{assets}"               # embedded (inside the .vpk, read from app0:) | external (user copies them to ux0:data/<data_folder>/)
+unsafe = false                    # true only when PORT_PLAN.md records why (skills/port-to-vita/references/unsafe.md)
+extended_memory = false           # ATTRIBUTE2=12 in param.sfo; only when profiling shows the need
+
+[project]
+kind = "{kind}"                   # ud (a universal-decompiler reconstruction) | cmake
+source_dir = "."
+pc_build_dir = "{pc_build_dir}"   # the PC build, which must keep working
+
+[build]
+backend = "auto"                  # auto (native if $VITASDK is valid, else Docker) | native | docker
+build_dir = "build-vita"
+config = "Release"
+generator = ""                    # e.g. "Ninja"; empty = CMake's default
+options = []                      # extra -D options for the Vita configure, e.g. ["-DGAME_NO_NETWORK=ON"]
+docker_image = "vitasdk/vitasdk:latest"
+vdpm = []                         # vdpm packages the port needs, e.g. ["sdl2", "vitaGL"]; `vita tools check` checks them
+vpk = ""                          # the .vpk the build produces (default: the only *.vpk in build_dir)
+elf = ""                          # the unstripped ELF, for `vita core` (default: the only *.elf in build_dir)
+
+[livearea]
+dir = "sce_sys"                   # vita_create_vpk(... FILE sce_sys sce_sys)
+
+[assets]
+source = "{asset_source}"         # where the game's assets are (ud repos: data/, gitignored)
+out = "build-vita/assets"         # `vita assets convert` writes here
+vpk_dir = "assets"                # folder in the .vpk (embedded) and under ux0:data/<data_folder>/ (external)
+# Conversion rules, first match wins (`vita assets --help`). Fill them in from PORT_PLAN.md.
+[[assets.rule]]
+glob = "**/*"
+action = "copy"
+
+[sim]
+build_dir = "build-sim"
+exe = ""                          # the simulation build's executable, e.g. "build-sim/bin/game"
+args = []
+memory_mb = 0                     # cap for the allocator wrapper; 0 = the default Vita budget (vitaport.h)
+options = ["-DVITA_SIM=ON"]
+
+[emu]
+vita3k = ""                       # path to Vita3K (default: PATH, $VITA3K, the usual install folders)
+args = []
+
+[device]
+ip = ""                           # the Vita's IP: set it only once the user says the console is connected
+ftp_port = 1337                   # vitacompanion FTP
+cmd_port = 1338                   # vitacompanion commands
+log_port = 18194                  # where the app's network log (vitaport.h) sends its lines
+
+[publish]
+allow = []                        # globs of your own small files the publish guard should let through

@@ -1,0 +1,72 @@
+# ps-vita-porter settings for the Lumen Drift port (read by `vita`). Decisions and reasons: PORT_PLAN.md.
+
+[app]
+title_id = "LMDR00001"            # intake: 4 letters + 5 digits, no reserved prefix, no VitaDB match (2026-10-07)
+name = "Lumen Drift"
+version = "01.00"
+data_folder = "LumenDrift"        # ux0:data/LumenDrift/: settings.txt, vitaport.log (and the assets in external mode)
+assets = "embedded"               # intake: embedded (the game's own art; one self-contained .vpk). CI also builds external.
+unsafe = false
+extended_memory = false
+
+[project]
+kind = "cmake"
+source_dir = "."
+pc_build_dir = "build"
+
+[build]
+backend = "auto"
+build_dir = "build-vita"
+config = "Release"
+generator = ""
+options = []
+docker_image = "vitasdk/vitasdk:latest"
+vdpm = ["sdl2", "vitaGL"]
+vpk = ""
+elf = ""
+
+[livearea]
+dir = "sce_sys"
+
+[assets]
+source = "assets"
+out = "build-vita/assets"
+vpk_dir = "assets"
+
+# intake: pixel art stays lossless and full size; sound effects go to 22.05 kHz mono (a quarter of the PC size)
+[[assets.rule]]
+glob = "*.tga"
+action = "texture"
+format = "keep"
+filter = "neighbor"
+
+[[assets.rule]]
+glob = "*.wav"
+action = "audio"
+format = "wav"
+rate = 22050
+channels = 1
+
+[[assets.rule]]
+glob = "**/*"
+action = "copy"
+
+[sim]
+build_dir = "build-sim"
+exe = "build-sim/bin/lumen-drift"
+args = []
+memory_mb = 128
+options = ["-DVITA_SIM=ON"]
+
+[emu]
+vita3k = ""
+args = []
+
+[device]
+ip = ""
+ftp_port = 1337
+cmd_port = 1338
+log_port = 18194
+
+[publish]
+allow = []

@@ -1,0 +1,202 @@
+# Tool registry for `vita tools check`. Adding a tool needs no code change; adding a check *kind* does.
+#
+# [tools.<id>]
+#   name, description, homepage
+#   kind           "bin" (default) | "vitasdk" | "docker-image" | "vdpm" | "vita3k" | "vitacompanion" | "dir"
+#   bin            executables to look for on PATH (any one is enough)
+#   env            an environment variable pointing at the tool's folder (or file)
+#   env_files      files that must exist inside that folder (any one)
+#   paths          extra file locations to probe (env vars like %APPDATA% and ~ are expanded; globs allowed)
+#   version        arguments that print the version (stdout or stderr); version_regex picks it out
+#   min_version    dotted minimum, compared numerically
+#   platforms      where it runs at all (default: windows, linux, macos)
+#   install.windows / install.linux / install.macos   exact steps shown to the user; vita never runs them
+#
+# [groups.<id>]  label, required = [...], optional = [...], one_of = [[...]] (at least one of each inner list)
+# vdpm packages are checked from vita.toml [build] vdpm (+ vitaGL, always) against the native SDK's package
+# database ($VITASDK/var/lib/pacman/local) or inside the Docker image.
+#
+# Versions and install methods were checked against official sources on 2026-10-07 (see DEVLOG.md).
+
+# ----------------------------------------------------------------------------- toolchain
+
+[tools.vitasdk]
+name = "VitaSDK (native)"
+kind = "vitasdk"
+description = "the PS Vita toolchain: arm-vita-eabi-gcc, vita-elf-create, vita-make-fself, vita-mksfoex, vita-pack-vpk, vdpm"
+homepage = "https://vitasdk.org"
+env = "VITASDK"
+env_files = ["bin/arm-vita-eabi-gcc", "bin/arm-vita-eabi-gcc.exe"]
+version_file = "version_info.txt"
+version_regex = 'Built at ([0-9-]+)'
+install.windows = """VitaSDK runs in WSL2 or MSYS2 on Windows (or use Docker: see 'Docker + vitasdk image').
+In WSL2 (Ubuntu), follow the Linux steps. Then expose it to Windows shells only through WSL."""
+install.linux = """sudo apt install make git-core cmake python3 curl
+export VITASDK=/usr/local/vitasdk && export PATH=$VITASDK/bin:$PATH   # add both lines to ~/.bashrc or ~/.zshrc
+git clone https://github.com/vitasdk/vdpm && cd vdpm && ./bootstrap-vitasdk.sh && ./install-all.sh
+(see https://vitasdk.org for the current instructions)"""
+install.macos = """brew install wget cmake
+export VITASDK=/usr/local/vitasdk && export PATH=$VITASDK/bin:$PATH   # add both lines to ~/.zshrc
+git clone https://github.com/vitasdk/vdpm && cd vdpm && ./bootstrap-vitasdk.sh && ./install-all.sh"""
+
+[tools.docker-image]
+name = "Docker + vitasdk image"
+kind = "docker-image"
+description = "builds the .vpk in the official vitasdk/vitasdk image when there's no native VitaSDK (latest = every package)"
+homepage = "https://hub.docker.com/r/vitasdk/vitasdk"
+bin = ["docker"]
+image = "vitasdk/vitasdk:latest"
+install.windows = """winget install --id Docker.DockerDesktop -e   (WSL2 backend), start Docker Desktop, then:
+docker pull vitasdk/vitasdk:latest      # about 1.6 GB unpacked"""
+install.linux = """sudo apt install docker.io && sudo usermod -aG docker $USER   (log out and back in), then:
+docker pull vitasdk/vitasdk:latest      # about 1.6 GB unpacked"""
+install.macos = """brew install --cask docker   (start Docker Desktop), then:
+docker pull vitasdk/vitasdk:latest"""
+
+[tools.cmake]
+name = "CMake 3.20+"
+description = "configures the PC and Vita builds"
+homepage = "https://cmake.org/download/"
+bin = ["cmake"]
+version = ["--version"]
+version_regex = 'cmake version ([0-9.]+)'
+min_version = "3.20"
+install.windows = "winget install --id Kitware.CMake -e"
+install.linux = "sudo apt install cmake   # older distros: pip install cmake"
+install.macos = "brew install cmake"
+
+[tools.git]
+name = "Git"
+description = "version control (the port is committed step by step)"
+homepage = "https://git-scm.com"
+bin = ["git"]
+version = ["--version"]
+version_regex = 'git version ([0-9.]+)'
+install.windows = "winget install --id Git.Git -e"
+install.linux = "sudo apt install git"
+install.macos = "xcode-select --install"
+
+[tools.cxx]
+name = "PC C++ compiler (for the PC build and the simulation profile)"
+description = "the PC target must keep building; `vita sim` builds it with -DVITA_SIM=ON"
+homepage = "https://visualstudio.microsoft.com/downloads/"
+bin = ["cl", "g++", "clang++", "c++"]
+paths = ["%ProgramFiles(x86)%/Microsoft Visual Studio/Installer/vswhere.exe"]
+version = ["--version"]
+version_regex = '([0-9]+\.[0-9]+(\.[0-9]+)?)'
+install.windows = "winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override \"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended --passive\""
+install.linux = "sudo apt install build-essential"
+install.macos = "xcode-select --install"
+
+# ----------------------------------------------------------------------------- assets
+
+[tools.ffmpeg]
+name = "FFmpeg"
+description = "scales LiveArea images, converts textures and audio (vita livearea make, vita assets convert)"
+homepage = "https://ffmpeg.org/download.html"
+bin = ["ffmpeg"]
+version = ["-version"]
+version_regex = 'ffmpeg version ([0-9][0-9.]*)'
+install.windows = "winget install --id Gyan.FFmpeg -e"
+install.linux = "sudo apt install ffmpeg"
+install.macos = "brew install ffmpeg"
+
+[tools.pngquant]
+name = "pngquant"
+description = "quantises icon0, bg0 and startup to indexed PNGs (vita livearea make)"
+homepage = "https://pngquant.org"
+bin = ["pngquant"]
+version = ["--version"]
+version_regex = '([0-9]+\.[0-9.]+)'
+install.windows = "winget install --id pngquant.pngquant -e   # or download pngquant.exe from https://pngquant.org and put it on PATH"
+install.linux = "sudo apt install pngquant"
+install.macos = "brew install pngquant"
+
+[tools.etcpak]
+name = "etcpak (optional: ETC1 textures)"
+description = "only needed when PORT_PLAN.md picks ETC1; DXT1/DXT5 are encoded by vita itself"
+homepage = "https://github.com/wolfpld/etcpak"
+bin = ["etcpak"]
+install.windows = "build from https://github.com/wolfpld/etcpak (CMake) and put etcpak.exe on PATH"
+install.linux = "git clone https://github.com/wolfpld/etcpak && cmake -S etcpak -B etcpak/build && cmake --build etcpak/build   # then put it on PATH"
+install.macos = "git clone https://github.com/wolfpld/etcpak && cmake -S etcpak -B etcpak/build && cmake --build etcpak/build"
+
+[tools.pvrtextool]
+name = "PVRTexToolCLI (optional: PVRTC textures)"
+description = "only needed when PORT_PLAN.md picks PVRTC"
+homepage = "https://developer.imaginationtech.com/solutions/pvrtextool/"
+bin = ["PVRTexToolCLI"]
+install.windows = "download PVRTexTool from https://developer.imaginationtech.com/solutions/pvrtextool/ (free account) and put PVRTexToolCLI on PATH"
+install.linux = "download PVRTexTool from https://developer.imaginationtech.com/solutions/pvrtextool/ and put PVRTexToolCLI on PATH"
+install.macos = "download PVRTexTool from https://developer.imaginationtech.com/solutions/pvrtextool/ and put PVRTexToolCLI on PATH"
+
+# ----------------------------------------------------------------------------- emulator and hardware
+
+[tools.vita3k]
+name = "Vita3K (optional)"
+kind = "vita3k"
+description = "the PS Vita emulator; `vita emu` installs and runs the .vpk in it. Its compatibility limits are not port bugs"
+homepage = "https://vita3k.org/quickstart.html"
+bin = ["Vita3K", "vita3k"]
+env = "VITA3K"
+paths = ["~/Applications/Vita3K*.AppImage", "~/.local/bin/Vita3K*.AppImage", "~/Vita3K/Vita3K", "%LOCALAPPDATA%/Vita3K/Vita3K.exe",
+         "%ProgramFiles%/Vita3K/Vita3K.exe", "/Applications/Vita3K.app/Contents/MacOS/Vita3K"]
+install.windows = """Download windows-latest.zip from https://github.com/Vita3K/Vita3K/releases/tag/continuous, extract it
+(e.g. to %LOCALAPPDATA%\\Vita3K), run Vita3K.exe once and install the firmware and the font firmware
+(File > Install Firmware; both from PlayStation's servers, see https://vita3k.org/quickstart.html).
+Optionally setx VITA3K "%LOCALAPPDATA%\\Vita3K\\Vita3K.exe"."""
+install.linux = """Download Vita3K-x86_64.AppImage from https://github.com/Vita3K/Vita3K/releases/tag/continuous to ~/Applications,
+chmod +x it, run it once and install the firmware and the font firmware (File > Install Firmware;
+see https://vita3k.org/quickstart.html). Optionally export VITA3K=~/Applications/Vita3K-x86_64.AppImage."""
+install.macos = """Download macos-latest.dmg (Intel) or macos-arm64-latest.dmg from https://github.com/Vita3K/Vita3K/releases/tag/continuous,
+copy Vita3K.app to /Applications, run it once and install the firmware and the font firmware."""
+
+[tools.vitacompanion]
+name = "vitacompanion on the Vita (FTP 1337, commands 1338)"
+kind = "vitacompanion"
+description = "lets `vita deploy/launch/kill` reach a real console; only checked once a Vita IP is configured"
+homepage = "https://github.com/devnoname120/vitacompanion"
+install.windows = """On the Vita (HENkaku/Ensō + taiHEN): copy vitacompanion.suprx and vitacompanion_kernel.skprx to ur0:tai/,
+add them to ur0:tai/config.txt (the .skprx under *KERNEL, the .suprx under *main), reboot.
+Then set [device] ip in vita.toml to the Vita's IP (Settings > Network > Wi-Fi Settings > Advanced)."""
+install.linux = """On the Vita (HENkaku/Ensō + taiHEN): copy vitacompanion.suprx and vitacompanion_kernel.skprx to ur0:tai/,
+add them to ur0:tai/config.txt (the .skprx under *KERNEL, the .suprx under *main), reboot.
+Then set [device] ip in vita.toml to the Vita's IP (Settings > Network > Wi-Fi Settings > Advanced)."""
+install.macos = """On the Vita (HENkaku/Ensō + taiHEN): copy vitacompanion.suprx and vitacompanion_kernel.skprx to ur0:tai/,
+add them to ur0:tai/config.txt (the .skprx under *KERNEL, the .suprx under *main), reboot."""
+
+[tools.vita-parse-core]
+name = "vita-parse-core (optional: crash dumps)"
+kind = "dir"
+description = "turns a .psp2dmp crash dump into a readable backtrace (`vita core`); Python 2 script"
+homepage = "https://github.com/xyzz/vita-parse-core"
+env = "VITA_PARSE_CORE"
+env_files = ["main.py"]
+paths = ["~/vita-parse-core/main.py", "~/tools/vita-parse-core/main.py"]
+install.windows = """git clone https://github.com/xyzz/vita-parse-core %USERPROFILE%\\vita-parse-core
+It runs on Python 2: install Python 2.7 (python2 on PATH) and `python2 -m pip install -r requirements.txt`.
+setx VITA_PARSE_CORE "%USERPROFILE%\\vita-parse-core\""""
+install.linux = """git clone https://github.com/xyzz/vita-parse-core ~/vita-parse-core
+It runs on Python 2.7 (pyenv install 2.7.18, or your distro's python2), then:
+python2 -m pip install -r ~/vita-parse-core/requirements.txt ; export VITA_PARSE_CORE=~/vita-parse-core"""
+install.macos = """git clone https://github.com/xyzz/vita-parse-core ~/vita-parse-core   (needs Python 2.7 via pyenv)
+export VITA_PARSE_CORE=~/vita-parse-core"""
+
+[tools.python2]
+name = "Python 2.7 (optional: vita-parse-core)"
+description = "vita-parse-core is a Python 2 script"
+homepage = "https://www.python.org/downloads/release/python-2718/"
+bin = ["python2", "python2.7"]
+version = ["--version"]
+version_regex = 'Python ([0-9.]+)'
+install.windows = "install Python 2.7.18 from https://www.python.org/downloads/release/python-2718/ (python2 on PATH)"
+install.linux = "pyenv install 2.7.18 (https://github.com/pyenv/pyenv), then make python2 available on PATH"
+install.macos = "pyenv install 2.7.18, then make python2 available on PATH"
+
+# ----------------------------------------------------------------------------- groups
+
+[groups.check]
+label = "everything `vita` needs for a port"
+one_of = [["vitasdk", "docker-image"]]
+required = ["cmake", "git", "cxx", "ffmpeg", "pngquant"]
+optional = ["vita3k", "vita-parse-core", "python2", "etcpak", "pvrtextool"]
