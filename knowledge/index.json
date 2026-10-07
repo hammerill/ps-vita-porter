@@ -1,0 +1,138 @@
+[
+ {
+  "path": "tooling/livearea-images-that-install.md",
+  "kind": "topic",
+  "title": "LiveArea images that install (and the ya8 grayscale bug)",
+  "family": "tooling",
+  "tags": [
+   "livearea",
+   "sce_sys",
+   "pngquant",
+   "ffmpeg",
+   "0x8010113D"
+  ],
+  "tools": [
+   "ffmpeg 6.1.1",
+   "pngquant 2.18.0",
+   "vita 0.1.0"
+  ],
+  "status": "working",
+  "agents": [
+   "Claude Code (Opus 5.5)"
+  ],
+  "humans": [],
+  "date": "2026-10-07",
+  "links": [
+   "https://gist.github.com/hammerill/64411eebf071b93396b7d310ba8d6776"
+  ]
+ },
+ {
+  "path": "tooling/memory-budgeting.md",
+  "kind": "topic",
+  "title": "Memory budgeting for a Vita port",
+  "family": "tooling",
+  "tags": [
+   "memory",
+   "heap",
+   "cdram",
+   "extended-memory",
+   "simulation"
+  ],
+  "tools": [
+   "VitaSDK 2026.08 (newlib)",
+   "vita 0.1.0"
+  ],
+  "status": "working",
+  "agents": [
+   "Claude Code (Opus 5.5)"
+  ],
+  "humans": [],
+  "date": "2026-10-07",
+  "links": [
+   "https://vita-rust.github.io/book/dev/mem.html",
+   "https://github.com/vitasdk/newlib"
+  ]
+ },
+ {
+  "path": "tooling/vita3k-limitations-for-homebrew.md",
+  "kind": "topic",
+  "title": "Vita3K as a test level for homebrew ports: what it can and can't tell you",
+  "family": "tooling",
+  "tags": [
+   "vita3k",
+   "emulator",
+   "testing"
+  ],
+  "tools": [
+   "Vita3K continuous build 4134 (2026-10-06)",
+   "vita 0.1.0"
+  ],
+  "status": "in-progress",
+  "agents": [
+   "Claude Code (Opus 5.5)"
+  ],
+  "humans": [],
+  "date": "2026-10-07",
+  "links": [
+   "https://vita3k.org/quickstart.html",
+   "https://github.com/Vita3K/Vita3K/releases/tag/continuous"
+  ]
+ },
+ {
+  "path": "tooling/vitagl-shader-cache-and-libshacccg.md",
+  "kind": "topic",
+  "title": "vitaGL shaders: libshacccg.suprx, the GLSL translator and the shader cache",
+  "family": "tooling",
+  "tags": [
+   "vitagl",
+   "shaders",
+   "libshacccg",
+   "glsl",
+   "cg",
+   "shader-cache"
+  ],
+  "tools": [
+   "vitaGL r1448 and r1488",
+   "vitaShaRK 1.7",
+   "VitaSDK 2026.08"
+  ],
+  "status": "working",
+  "agents": [
+   "Claude Code (Opus 5.5)"
+  ],
+  "humans": [],
+  "date": "2026-10-07",
+  "links": [
+   "https://github.com/Rinnegatamante/vitaGL",
+   "https://consolemods.org/wiki/Vita:Installing_Libshacccg.suprx"
+  ]
+ },
+ {
+  "path": "tooling/vitasdk-in-docker.md",
+  "kind": "topic",
+  "title": "Building .vpk files with VitaSDK in Docker",
+  "family": "tooling",
+  "tags": [
+   "vitasdk",
+   "docker",
+   "ci",
+   "vdpm",
+   "sdl2"
+  ],
+  "tools": [
+   "vitasdk/vitasdk:latest (VitaSDK 2026.08, digest fd82d88f)",
+   "Docker 29.7.2",
+   "vita 0.1.0"
+  ],
+  "status": "working",
+  "agents": [
+   "Claude Code (Opus 5.5)"
+  ],
+  "humans": [],
+  "date": "2026-10-07",
+  "links": [
+   "https://hub.docker.com/r/vitasdk/vitasdk",
+   "https://github.com/vitasdk/docker"
+  ]
+ }
+]

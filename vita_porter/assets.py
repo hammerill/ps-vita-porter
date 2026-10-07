@@ -61,8 +61,11 @@ def match(rel_path: str, glob: str) -> bool:
 
 
 def rule_for(rel_path: str, rules: list[dict]) -> dict:
+    media = Path(rel_path).suffix.lower() in IMAGE_EXT | AUDIO_EXT
     for r in rules:
         if match(rel_path, r.get("glob", "**/*")):
+            if media and r.get("action", "copy") == "copy" and r.get("glob", "**/*") in ("**/*", "*", "**"):
+                return {**r, "_default": True}    # images/audio only caught by the catch-all: no decision was made for them
             return r
     ext = Path(rel_path).suffix.lower()
     return {"action": "copy"} if ext not in IMAGE_EXT | AUDIO_EXT else {"action": "copy", "_default": True}

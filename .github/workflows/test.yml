@@ -1,0 +1,103 @@
+name: test
+on: [push, pull_request]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv run ruff check
+      - name: skills in sync
+        run: python3 scripts/sync_skills.py --check
+      - name: knowledge base
+        run: ./bin/vita kb check --index
+
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: ffmpeg and pngquant (LiveArea and asset-conversion tests)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg pngquant
+      - run: uv run pytest -q -ra
+      - name: every help screen
+        shell: bash
+        run: |
+          uv run vita --help > /dev/null
+          for g in init scan tools build livearea vpk assets sim emu deploy launch kill logs core publish kb; do uv run vita $g --help > /dev/null; done
+      - name: installs as a uv tool
+        shell: bash
+        run: |
+          uv tool install .
+          VITA="$(uv tool dir --bin)/vita"
+          "$VITA" --version
+          "$VITA" tools list > /dev/null
+
+  example-pc:
+    # Lumen Drift's PC build and its "Vita simulation" build (-DVITA_SIM=ON): compile, then the headless selftest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: examples/lumen-drift
+    steps:
+      - uses: actions/checkout@v4
+      - name: SDL2 and GL development files
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libsdl2-dev libgl1-mesa-dev
+      - name: PC build
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release --parallel
+          ./build/bin/lumen-drift --selftest
+      - name: Vita simulation build
+        run: |
+          cmake -S . -B build-sim -DCMAKE_BUILD_TYPE=Release -DVITA_SIM=ON
+          cmake --build build-sim --config Release --parallel
+          ./build-sim/bin/lumen-drift --selftest
+
+  example-vpk:
+    # Lumen Drift's .vpk, both asset modes, built in the vitasdk/vitasdk Docker image through `vita build --docker`,
+    # then checked like the agent checks it
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: examples/lumen-drift
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: tools for asset conversion
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg pngquant
+      - name: VitaSDK image
+        run: docker pull vitasdk/vitasdk:latest
+      - name: LiveArea
+        run: ../../bin/vita livearea check
+      - name: convert assets
+        run: ../../bin/vita assets convert && ../../bin/vita assets check
+      - name: build (embedded assets)
+        run: ../../bin/vita build --docker
+      - name: check (embedded assets)
+        run: ../../bin/vita vpk check build-vita/lumen-drift.vpk
+      - name: build (external assets)
+        run: ../../bin/vita build --docker --build-dir build-vita-ext -D VITA_ASSETS_MODE=external
+      - name: check (external assets)
+        run: ../../bin/vita vpk check build-vita-ext/lumen-drift.vpk --assets external
+      - name: nothing that mustn't be committed
+        run: VITA_PUBLISH_OFFLINE=1 ../../bin/vita publish check
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lumen-drift-vpk
+          path: |
+            examples/lumen-drift/build-vita/lumen-drift.vpk
+            examples/lumen-drift/build-vita-ext/lumen-drift.vpk
+            examples/lumen-drift/build-vita/assets/

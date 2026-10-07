@@ -13,6 +13,8 @@ The configure passes the toolchain file ($VITASDK/share/vita.toolchain.cmake, wh
 values from vita.toml, for the project's Vita target (cmake/VitaPort.cmake reads them):
   VITA_TITLEID VITA_APP_NAME VITA_VERSION VITA_DATA_FOLDER VITA_ASSETS_MODE VITA_ASSETS_DIR VITA_ASSETS_VPK_DIR
   VITA_LIVEAREA_DIR VITA_UNSAFE VITA_EXTENDED_MEMORY
+If vita-elf-create fails with "Cannot allocate N bytes for SCE data ... overlaps" (the code segment ends just
+below the 64 KiB-aligned data segment), the build is retried once with -D VITAPORT_ELF_PAD=4096.
 Full log: build-vita/vita-build.log. After a successful build `arm-vita-eabi-nm -u` runs on the ELF: any `U`
 symbol is an unresolved import (vita-elf-create stays silent about them when the link allowed it).
 Exit code 1 on a failed configure/build, a missing .vpk, or unresolved imports.
@@ -33,7 +35,7 @@ ERROR_RX = [
     re.compile(r"^(?P<file>[^\s:][^:]*?|[A-Za-z]:[^:]+?):(?P<line>\d+)(?::(?P<col>\d+))?:\s*(?:fatal )?error:\s*(?P<msg>.+)$"),
     re.compile(r"^(?P<file>[^:\s]+\.o(?:bj)?)?:?.*?(?P<msg>undefined reference to .+|undefined symbol: .+|multiple definition of .+)$"),
     re.compile(r"^CMake Error(?: at (?P<file>[^:]+):(?P<line>\d+))?.*?:?\s*(?P<msg>.*)$"),
-    re.compile(r"^(?P<msg>(?:Unable to relocate ELF sections|Failed to .+|.*vita-(?:elf-create|make-fself|mksfoex|pack-vpk).*(?:error|failed).*))$", re.I),
+    re.compile(r"^(?P<msg>(?:Unable to relocate ELF sections|Failed to .+|.*vita-(?:elf-create|make-fself|mksfoex|pack-vpk).*(?:error|failed|Cannot allocate).*))$", re.I),
 ]
 WARN_RX = re.compile(r"(?:^|\s)warning\s*:", re.I)
 
@@ -149,7 +151,7 @@ def docker_cmd(root: Path, image: str, script: str) -> list[str]:
 
 
 def build(root: Path, backend: str | None = None, config: str | None = None, extra: list[str] | None = None, fresh: bool = False,
-          max_errors: int = 10, target: str | None = None, build_dir: str | None = None) -> dict:
+          max_errors: int = 10, target: str | None = None, build_dir: str | None = None, _retrying: bool = False) -> dict:
     cfg = load_config(root)
     b = cfg.get("build", {})
     backend = pick_backend(cfg, backend)
@@ -197,6 +199,15 @@ def build(root: Path, backend: str | None = None, config: str | None = None, ext
             rc = run_logged(docker_cmd(root, image, script), root, log)
             stage = "build" if "@@configured" in logp.read_text(encoding="utf-8", errors="replace") else "configure"
     text = logp.read_text(encoding="utf-8", errors="replace")
+    overlap = re.search(r"Cannot allocate (\d+) bytes for SCE data at end of segment \d+; segment \d+ overlaps", text)
+    if rc and overlap and not any("VITAPORT_ELF_PAD" in x for x in (extra or [])) and not _retrying:
+        # the code segment ends too close to the 64 KiB-aligned data segment for vita-elf-create's import tables:
+        # pad .rodata (cmake/VitaPort.cmake) and build once more
+        r = build(root, backend, config, [*(extra or []), "VITAPORT_ELF_PAD=4096"], False, max_errors, target, build_dir, _retrying=True)
+        r["notes"].insert(0, f"vita-elf-create couldn't fit {overlap.group(1)} bytes of import tables between the code and data segments "
+                             "(code size happened to end just below a 64 KiB boundary); rebuilt with -D VITAPORT_ELF_PAD=4096 "
+                             "(cmake/VitaPort.cmake). Keep that option in [build] options if it recurs.")
+        return r
     errors, nerr, nwarn = parse_errors(text, max_errors)
     res: dict = dict(ok=rc == 0, backend=backend, stage=stage, exit_code=rc, config=config, seconds=round(time.time() - t0, 1),
                      errors=errors, error_count=nerr, warning_count=nwarn, log=rel(root, logp), vpk=None, elf=None, unresolved=[], notes=[])

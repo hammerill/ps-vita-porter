@@ -1,0 +1,57 @@
+ps-vita-porter
+Copyright (c) 2026 hammerill and ps-vita-porter contributors. MIT License (see LICENSE).
+
+Inspired by universal-modder (https://github.com/rehan-remade/universal-modder) by rehan-remade.
+Not affiliated with its authors.
+
+ps-vita-porter is the companion of universal-decompiler (https://github.com/hammerill/universal-decompiler, same
+author, MIT) and mirrors the architecture both share: skills + CLI + knowledge base + journal + circuit breaker,
+distributed to the same agents the same way. universal-decompiler itself mirrors universal-modder. The files
+below contain code or text copied from or derived from universal-modder (through universal-decompiler), used
+under its MIT License:
+
+    Copyright (c) 2026 Rehan and universal-modder contributors
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+    associated documentation files (the "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
+    following conditions:
+
+    The above copyright notice and this permission notice shall be included in all copies or substantial
+    portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO
+    EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+    IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
+    THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+Code (each file carries the notice in its header):
+- bin/vita                  derived from bin/um (the uv launcher), via universal-decompiler's bin/ud
+- hooks/add-to-path.sh      derived from hooks/add-to-path.sh (SessionStart PATH hook), via universal-decompiler
+- vita_porter/cli.py        derived from um/cli.py (group dispatcher), via ud/cli.py
+- vita_porter/common.py     derived from um/common.py (platform and WSL path helpers), via ud/common.py
+- vita_porter/kb.py         derived from um/kb.py (knowledge base: sync, search, check, index, new, pr), via ud/kb.py
+- vita_porter/publish.py    secret patterns derived from um/publish.py, via ud/publish.py
+- tests/test_repo.py        the skill-copy test and the PATH-hook test derived from tests/test_um.py, via universal-decompiler
+- tests/test_kb.py          parts of the knowledge-base tests derived from tests/test_um.py, via universal-decompiler
+
+Structure and text (adapted, not copied verbatim):
+- hooks/hooks.json, .claude/settings.json, .claude-plugin/, .codex-plugin/, .cursor-plugin/,
+  .agents/plugins/marketplace.json, gemini-extension.json, opencode.json, plugin.json: same layout as
+  universal-modder's manifests
+- AGENTS.md, CLAUDE.md, GEMINI.md, CONTRIBUTING.md, .github/pull_request_template.md: structure adapted
+- skills/share-field-notes/SKILL.md: adapted from skills/share-field-notes/SKILL.md
+- skills/port-to-vita/SKILL.md: section structure (tools table, the loop, hard rules, references) modelled on
+  skills/mod-any-game/SKILL.md (through universal-decompiler's decompile-any-binary)
+- knowledge/README.md, knowledge/TEMPLATE.md: structure adapted from knowledge/README.md, knowledge/TEMPLATE.md
+
+From universal-decompiler (same author, MIT), adapted:
+- vita_porter/build.py (error-summary patterns, logged runs), vita_porter/proc.py (bounded runs, screenshots,
+  exact-PID kills), vita_porter/ps1/WinShot.ps1, vita_porter/tools.py (registry checks), vita_porter/init.py
+  (managed .gitignore block, chained pre-push hook), scripts/sync_skills.py, tests/conftest.py (repo fixtures)
+
+Third-party specifications and facts are credited where they're used: hammerill's "LiveArea Specs" gist
+(LiveArea layout, with its ya8 colour bug fixed), the VitaSDK headers, vitaGL, Vita3K's command line,
+vitacompanion's README, the vita-rust book's memory chapter.
