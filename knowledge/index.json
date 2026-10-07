@@ -54,6 +54,31 @@
   ]
  },
  {
+  "path": "tooling/vita-elf-create-segment-overlap.md",
+  "kind": "topic",
+  "title": "vita-elf-create: 'Cannot allocate N bytes for SCE data ... segment 1 overlaps'",
+  "family": "tooling",
+  "tags": [
+   "vitasdk",
+   "vita-elf-create",
+   "linker",
+   "build"
+  ],
+  "tools": [
+   "VitaSDK 2026.08 (vita-toolchain c527abc)",
+   "vita 0.1.0"
+  ],
+  "status": "working",
+  "agents": [
+   "Claude Code (Opus 5.5)"
+  ],
+  "humans": [],
+  "date": "2026-10-07",
+  "links": [
+   "https://github.com/vitasdk/vita-toolchain/blob/master/src/vita-elf-create/sce-elf.c"
+  ]
+ },
+ {
   "path": "tooling/vita3k-limitations-for-homebrew.md",
   "kind": "topic",
   "title": "Vita3K as a test level for homebrew ports: what it can and can't tell you",

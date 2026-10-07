@@ -143,3 +143,48 @@ step. Newest entries at the bottom of each day.
 - "platform" (as in `platform::`) made every project a "platformer": the genre keywords no longer include it.
 - Integer scaling is recommended only when it fills >= 90% of the 544 lines (640x480 at 1x fills 88%: fit-to-height
   with nearest filtering is recommended instead).
+
+### More facts checked in the libraries themselves
+- **libshacccg paths**: vitaShaRK 1.7 (`libvitashark.a`) loads `ur0:/data/libshacccg.suprx`; vitaGL r1448 and r1488
+  also contain `ur0:data/external/libshacccg.suprx`. Shader cache strings: `ux0:data/shader_cache/v%d/{v,f}/...`.
+  Both vitaGL builds contain the GLSL translator (`glsl_translator_*`), VAOs, `glMapBuffer(Range)`,
+  `glDrawArraysInstanced`, `glBlitFramebuffer`, `glCompressedTexImage2D`.
+- **Vita3K + vitaGL**: an older vitaGL fork's README had a `HAVE_VITA3K_SUPPORT` build flag; the current vitaGL README
+  doesn't mention Vita3K at all. Whether vdpm's vitaGL boots in Vita3K is unverified (no Vita3K here): the
+  Vita3K note says so and asks the next agent to check.
+- CPU masks (`psp2/kernel/cpu.h`): `SCE_KERNEL_CPU_MASK_USER_0/1/2` + `SCE_KERNEL_CPU_MASK_SYSTEM` -> 3 cores for apps.
+  VitaSDK GCC defaults: `-march=armv7-a+simd -mtune=cortex-a9 -mfpu=neon -mfloat-abi=hard`, `long`/pointers 4 bytes.
+
+### vita-elf-create segment overlap (found by a test)
+- A two-file C test project failed in "Converting to Sony ELF": `Cannot allocate 1464 bytes for SCE data at end of
+  segment 0; segment 1 overlaps` + a segfault. Cause (vita-toolchain `sce-elf.c`): the SCE tables are appended
+  after the code segment and the data segment starts at the next 64 KiB boundary (default linker script,
+  `DATA_SEGMENT_ALIGN(0x10000, 0x10000)`); the code ended 0x268 bytes below it. Not flag-related (-O0/-O3,
+  nocopyreloc all fail). Fix: `VITAPORT_ELF_PAD` in VitaPort.cmake (a used .rodata array) and `vita build` retries
+  once with 4096 when it sees the message. Field note: `knowledge/tooling/vita-elf-create-segment-overlap.md`.
+
+### Packaging and CI checks run locally
+- `uv tool install .` into a scratch tool dir: `vita --version`, `vita tools list`, `vita init --kit` (the wheel carries
+  templates, kit, tools.toml, deps.toml, ps1/), `vita scan`, `vita vpk check` all work.
+- The CI jobs replayed from a fresh clone: `example-vpk` (livearea check, assets convert/check, `vita build --docker`
+  for both modes, both `vita vpk check`, publish check) and the Linux half of `example-pc` (PC + `-DVITA_SIM=ON` builds,
+  selftest). **Not run here: the Windows legs** (MSVC builds of the example and the kit's simulation sources, the
+  Windows test job). The example was hardened for them (`SDL_MAIN_HANDLED` + `SDL_SetMainReady`, no SDL2main,
+  `NOMINMAX`), but the first CI run is the real check.
+- The example's PC simulation runs vsync-less under WSLg (674 fps): fps numbers from WSL are not meaningful.
+
+## Acceptance checklist (from the brief), status 2026-10-07
+- [x] New, non-fork repo; layout as §3; agent manifests; skill copies in sync (script + test).
+- [x] `vita` installs via `uv tool install git+…` (verified with a local `uv tool install .`), via the plugin manifests,
+      via clone (`bin/vita`); SessionStart hook puts it on PATH (test); no clash with VitaSDK binaries (checked + test).
+- [x] Every §5.1 command exists, has `--help` with examples, `--json` where it reports, and is tested
+      (94 tests; device commands against a fake vitacompanion; Vita3K with a fake binary).
+- [x] `port-to-vita` + the 5 companion skills + share-field-notes; all 11 references written.
+- [x] Intake questions and recommendation logic documented in `vita-recon`; `vita scan` emits them.
+- [x] Example builds as PC and as `.vpk` (CI workflow written and replayed locally on Linux/Docker; Windows legs
+      pending the first CI run), passes `vita vpk check` and `vita livearea check`.
+- [x] README (inspiration, no affiliation, relation with universal-decompiler, end-user prerequisites); NOTICE lists
+      derived files; MIT.
+- [x] This DEVLOG records the decisions and substitutions.
+- Not verified anywhere: real hardware (no Vita here) and Vita3K (not installed): `vita deploy/launch/kill/logs/core`
+  are tested against fakes only; vitacompanion `promote` with an FTP-uploaded folder is untested on a console.
