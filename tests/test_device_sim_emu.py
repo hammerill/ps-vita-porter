@@ -16,9 +16,11 @@ from vita_porter import device, emu, sim
 
 
 class FakeCommands:
-    """A vitacompanion command port: records lines, answers 'ok'."""
+    """A vitacompanion command port: records lines, answers 'ok', or the command list to `help` (with `promote` like
+    the development tree, without it like release 1.07)."""
 
-    def __init__(self):
+    def __init__(self, promote=True):
+        self.promote = promote
         self.sock = socket.socket()
         self.sock.bind(("127.0.0.1", 0))
         self.sock.listen(5)
@@ -35,7 +37,11 @@ class FakeCommands:
             with c:
                 data = c.recv(4096).decode()
                 self.lines.append(data.strip())
-                c.sendall(b"ok\n")
+                if data.strip() == "help":
+                    cmds = ["help", "launch", "promote", "quit"] if self.promote else ["help", "launch", "quit"]
+                    c.sendall(("Command  Description\n" + "".join(f"{x}  ...\n" for x in cmds)).encode())
+                else:
+                    c.sendall(b"ok\n")
 
 
 class FakeFTP:
@@ -102,6 +108,25 @@ def test_deploy_dry_run_and_real(tmp_path, monkeypatch):
     assert FakeFTP.store["/ux0:/app/TEST00001/eboot.bin"][:4] == b"SCE\0"
     assert FakeFTP.store["/ux0:/data/MyGame/assets/a.bin"] == b"1234"
     assert srv.lines == ["quit TEST00001"]
+
+
+def test_deploy_vpk_promotes_or_copies_the_vpk(tmp_path, monkeypatch):
+    (tmp_path / "build-vita").mkdir()
+    make_vpk(tmp_path / "build-vita" / "game.vpk", tmp_path)
+    monkeypatch.setattr(device.ftplib, "FTP", FakeFTP)
+    srv = FakeCommands(promote=True)
+    cfg = cfg_for(srv.port)
+    FakeFTP.store.clear()
+    r = device.deploy(tmp_path, cfg, device.device(cfg, None), {"vpk"}, None, yes=True)
+    assert r["ok"] and r["promote"] and "/ux0:/data/vita-porter/TEST00001/eboot.bin" in FakeFTP.store
+    assert srv.lines == ["help", "quit TEST00001", "promote ux0:data/vita-porter/TEST00001"]
+    srv = FakeCommands(promote=False)
+    cfg = cfg_for(srv.port)
+    FakeFTP.store.clear()
+    r = device.deploy(tmp_path, cfg, device.device(cfg, None), {"vpk"}, None, yes=True)
+    assert r["ok"] and not r["promote"] and r["uploaded"] == 1 and "VitaShell" in r["note"]
+    assert FakeFTP.store["/ux0:/game.vpk"] == (tmp_path / "build-vita" / "game.vpk").read_bytes()
+    assert srv.lines == ["help"]
 
 
 def test_deploy_needs_something_and_an_ip(tmp_path):

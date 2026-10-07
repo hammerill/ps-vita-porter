@@ -41,7 +41,8 @@ virtual ux0. Vita3K's compatibility limits are not port bugs; record what you sa
 ## Hardware (only after the user says a Vita is connected)
 ```bash
 vita tools check                     # with [device] ip set: vitacompanion reachable?
-vita deploy --vpk --yes              # first install (asks the user first: deploying needs permission)
+vita deploy --vpk --yes              # first install (asks the user first: deploying needs permission); a
+                                     # vitacompanion without `promote` (<= 1.07) gets ux0:<name>.vpk -> VitaShell
 vita deploy --eboot --yes && vita launch     # fast iterations
 vita logs --timeout 120              # UDP log (build with -D VITA_LOG_HOST=<this PC's IP>)
 vita core                            # newest crash dump -> vita-parse-core (VITA_PARSE_CORE, python2)

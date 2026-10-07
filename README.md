@@ -112,7 +112,7 @@ exit codes 0 ok, 1 problem found, 2 usage error)
 | `vita assets convert\|check` | Textures (resize, nearest for pixel art, DXT1/DXT5 DDS, external encoders) and audio (rate, channels, OGG) into `build-vita/assets/`; missing/oversized items and the memory estimate |
 | `vita sim [--shot] [--input script] [--timeout S]` | The PC "Vita simulation": 960x544, Vita controls on keyboard/gamepad/mouse (touch, rear touch, gyro), Vita paths, a memory cap enforced by an allocator wrapper, scripted input, screenshots, stats; kill by PID |
 | `vita emu [--shot] [--timeout S]` | Vita3K, if installed: installs and runs the `.vpk`, collects its log and the app's log, screenshots, stops by PID |
-| `vita deploy\|launch\|kill\|logs\|core` | Real hardware through vitacompanion: FTP upload (unpacked `.vpk` + promote, `eboot.bin`, external assets), launch/quit, UDP network log or the log file, crash dumps through vita-parse-core |
+| `vita deploy\|launch\|kill\|logs\|core` | Real hardware through vitacompanion: FTP upload (unpacked `.vpk` + promote, or the `.vpk` to `ux0:` for VitaShell when vitacompanion has no promote; `eboot.bin`, external assets), launch/quit, UDP network log or the log file, crash dumps through vita-parse-core |
 | `vita publish check` | Fails if tracked files include `.vpk` files, Vita build outputs, converted or extracted assets, or the original binary; runs `ud publish check` in a ud repo. The pre-push hook |
 | `vita kb search\|show\|new\|check\|index\|sync\|pr` | The knowledge base |
 

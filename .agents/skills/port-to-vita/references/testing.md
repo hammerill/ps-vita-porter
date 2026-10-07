@@ -60,4 +60,6 @@ If anything fails: `vita logs`, `vita core`, and send the agent the log/dump.
 
 ## Level 4: hardware (only once the user says a Vita is connected)
 `vita deploy --vpk --yes` (or `--eboot` for quick iterations), `vita launch`, `vita logs`, `vita kill`,
-`vita core`. Fix, rebuild, redeploy autonomously.
+`vita core`. Fix, rebuild, redeploy autonomously. vitacompanion releases up to 1.07 have no `promote` command
+(only its development tree does): `vita deploy --vpk` notices (it asks `help` first) and copies the .vpk to
+`ux0:<name>.vpk` instead; the user installs that once with VitaShell, then `--eboot` iterations work as usual.

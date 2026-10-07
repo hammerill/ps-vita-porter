@@ -39,7 +39,11 @@ step. Newest entries at the bottom of each day.
   Firmware + font firmware must be installed by the user.
 - **vitacompanion** (devnoname120/vitacompanion README): FTP on 1337, commands on TCP 1338, `;`-separated:
   `launch <TITLEID>`, `quit <TITLEID>|all`, `reboot`, `screen on|off`, `promote <dir>` (installs an *extracted*
-  app directory, not a `.vpk`), `press/release`, `nosleep`, `version`. **There is no `destroy` command** in the
+  app directory, not a `.vpk`), `press/release`, `nosleep`, `version`. **`promote` is only in the development
+  tree**: the latest release, 1.07 (2026-09-16), lacks it and answers `Error: Unknown command.`; both have `help`
+  (one command per line). `vita deploy --vpk --yes` sends `help` first and, without `promote`, uploads the `.vpk`
+  as is to `ux0:<name>.vpk` for the user to install with VitaShell (a dry run can't know, so it shows the promote
+  plan plus a note). **There is no `destroy` command** in the
   current README (older forks had it) -> `vita kill` sends `quit <TITLEID>`.
 - **libshacccg.suprx**: current community method (Vita Troubleshooting Guide, consolemods wiki): install PSM
   Runtime 1.00, 2.00, 2.01, install ShaRKF00D.vpk, run it; it writes `ur0:data/libshacccg.suprx`.

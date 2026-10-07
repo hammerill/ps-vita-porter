@@ -1,7 +1,8 @@
 """Real hardware, through vitacompanion (FTP on 1337, commands on 1338). Only once the user says a Vita is connected:
 the Vita's IP comes from vita.toml [device] ip or --ip. Deploying needs the user's permission (--yes).
 
-    vita deploy --vpk --yes            # upload the unpacked .vpk to ux0:data/vita-porter/<TITLEID>/ and install it (promote)
+    vita deploy --vpk --yes            # upload the unpacked .vpk to ux0:data/vita-porter/<TITLEID>/ and install it (promote);
+                                       # without promote (releases up to 1.07): copy the .vpk to ux0: for VitaShell
     vita deploy --eboot --yes          # fast iteration: quit the app, replace ux0:app/<TITLEID>/eboot.bin
     vita deploy --assets --yes         # external assets: build-vita/assets -> ux0:data/<data_folder>/<vpk_dir>/
     vita deploy --eboot                # dry run: what would be uploaded, nothing sent
@@ -14,7 +15,9 @@ the Vita's IP comes from vita.toml [device] ip or --ip. Deploying needs the user
 
 vitacompanion commands (devnoname120/vitacompanion README, 2026-10-07): launch <TITLEID>, quit <TITLEID>|all,
 reboot, screen on|off, promote <dir> (installs an *extracted* app folder; it does not take a .vpk), separated by
-';'. Network logs: vitaport.h sends each vp_log line as a UDP datagram to VP_LOG_HOST:VP_LOG_PORT (default 18194).
+';'. promote is only in the development tree: release 1.07 (2026-09-16) answers "Error: Unknown command." and
+doesn't list it in `help`, so `deploy --vpk` asks `help` first and, without promote, uploads the .vpk itself to
+ux0:<name>.vpk for the user to install with VitaShell. Network logs: vitaport.h sends each vp_log line as a UDP datagram to VP_LOG_HOST:VP_LOG_PORT (default 18194).
 Crash dumps: the Vita writes ux0:data/*.psp2dmp when an app crashes; vita-parse-core (Python 2) needs the
 unstripped ELF from the build. Nothing on the console is ever deleted by these commands.
 """
@@ -98,7 +101,12 @@ def find_vpk(root: Path, cfg: dict, override: str | None) -> Path:
     return pick_vpk(root, cfg, override)
 
 
-def plan_deploy(root: Path, cfg: dict, what: set[str], vpk: str | None) -> list[dict]:
+def has_promote(dev: dict) -> bool:
+    """Whether this vitacompanion knows `promote`: its `help` lists one command per line."""
+    return any(ln.split()[:1] == ["promote"] for ln in send(dev, "help").splitlines())
+
+
+def plan_deploy(root: Path, cfg: dict, what: set[str], vpk: str | None, promote: bool = True) -> list[dict]:
     app, a = cfg.get("app", {}), cfg.get("assets", {})
     tid = app.get("title_id")
     if not tid:
@@ -106,7 +114,13 @@ def plan_deploy(root: Path, cfg: dict, what: set[str], vpk: str | None) -> list[
     steps: list[dict] = []
     if "vpk" in what or "eboot" in what:
         p = find_vpk(root, cfg, vpk)
-        steps.append(dict(kind="quit", command=f"quit {tid}"))
+        if "vpk" in what and not promote:
+            # no promote (vitacompanion releases up to 1.07): copy the .vpk itself for VitaShell to install
+            steps.append(dict(kind="file", src=rel(root, p), dst=f"ux0:{p.name}", size=p.stat().st_size))
+            what = what - {"vpk"}
+        else:
+            steps.append(dict(kind="quit", command=f"quit {tid}"))
+    if "vpk" in what or "eboot" in what:
         with zipfile.ZipFile(p) as z:
             if "vpk" in what:
                 for n in z.namelist():
@@ -135,9 +149,17 @@ def read_src(root: Path, src: str) -> bytes:
 
 
 def deploy(root: Path, cfg: dict, dev: dict, what: set[str], vpk: str | None, yes: bool) -> dict:
-    steps = plan_deploy(root, cfg, what, vpk)
+    promote = not (yes and "vpk" in what) or has_promote(dev)
+    steps = plan_deploy(root, cfg, what, vpk, promote)
     total = sum(s.get("size", 0) for s in steps)
     res = dict(ip=dev["ip"], steps=len(steps), bytes=total, dry_run=not yes, plan=steps[:50])
+    if "vpk" in what:
+        res["promote"] = promote
+        if promote:
+            res["note"] = "a vitacompanion without `promote` (releases up to 1.07) gets the .vpk copied to ux0: instead"
+        else:
+            res["note"] = (f"this vitacompanion has no `promote`: {steps[0]['dst']} was copied as is; the user installs "
+                           "it with VitaShell (ux0:, select the .vpk, Cross, install)")
     if not yes:
         res["ok"] = True
         return res
@@ -298,6 +320,8 @@ def main(a):
             print(f"  {s['kind']:7} {s.get('command') or s['src'] + ' -> ' + s['dst']}")
         if r["steps"] > len(r["plan"]):
             print(f"  ... {r['steps'] - len(r['plan'])} more")
+        if r.get("note") and (r["dry_run"] or not r["promote"]):
+            print(f"note: {r['note']}")
         if not r["dry_run"]:
             print(f"uploaded {r['uploaded']} file(s); command answers: " + "; ".join(f"{x['command']}: {x['answer'] or '(no answer)'}" for x in r["answers"]))
     elif cmd in ("launch", "kill"):
@@ -323,7 +347,7 @@ def register(sub):
     common.add_argument("--json", action="store_true")
     kw = dict(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter, parents=[common])
     p = sub.add_parser("deploy", help="upload the .vpk / eboot.bin / external assets to the Vita (vitacompanion FTP)", **kw)
-    p.add_argument("--vpk", action="store_true", help="install the whole .vpk (upload unpacked + promote)")
+    p.add_argument("--vpk", action="store_true", help="install the whole .vpk (upload unpacked + promote; without promote, copy the .vpk to ux0:)")
     p.add_argument("--eboot", action="store_true", help="replace ux0:app/<TITLEID>/eboot.bin")
     p.add_argument("--assets", action="store_true", help="upload [assets] out to ux0:data/<data_folder>/<vpk_dir>/")
     p.add_argument("--vpk-file", help="the .vpk to use (default: [build] vpk, else the newest in the build folder)")
