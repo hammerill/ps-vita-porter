@@ -163,6 +163,22 @@ step. Newest entries at the bottom of each day.
   nocopyreloc all fail). Fix: `VITAPORT_ELF_PAD` in VitaPort.cmake (a used .rodata array) and `vita build` retries
   once with 4096 when it sees the message. Field note: `knowledge/tooling/vita-elf-create-segment-overlap.md`.
 
+### Bounded build parallelism (reported from a Zuma Deluxe port on WSL)
+- `vita build` and `vita sim` ran `cmake --build <dir> --parallel` with no number. Checked with CMake 3.28.3 and a
+  wrapper make: a bare `--parallel` gives `make -f Makefile -j` (unlimited) and ignores `CMAKE_BUILD_PARALLEL_LEVEL`
+  (no `--parallel` gives `-j3` with it set to 3). About 500 SDL3 and libopenmpt files at once took WSL (7.6 GiB)
+  down twice and left a truncated `cmake_pch.h.gch`.
+- Now always `--parallel N`: `--jobs`, `[build] jobs`, `$CMAKE_BUILD_PARALLEL_LEVEL`, else min(CPUs, MemAvailable
+  GiB). The middle two are lowered to fit 700 MiB per job; `--jobs` is obeyed with a warning.
+- Builds run in their own process group with a watchdog (`[build] timeout_min` 120, `stall_min` 15; 0 = off). A
+  timeout, a stall or Ctrl+C kills the group, plus the named container for Docker (`docker kill`; killing the client
+  doesn't stop the container). Verified against a sleeping container.
+- `build-vita/.vita-build-running` (holding the PID) is left behind when a build never finished. The next build deletes
+  the precompiled headers it may have half-written, and refuses to start if that PID is still a live vita process.
+  PCH files that start without `gpch`/`CPCH` are deleted, and so are all of them after a `-Winvalid-pch` build.
+- Not done: preferring Ninja automatically. An existing build dir can't change generator without `--fresh`, and with a
+  bounded `-j` Make is safe. `docker run --memory` isn't set either: Docker Desktop's VM already shares WSL's memory.
+
 ### Packaging and CI checks run locally
 - `uv tool install .` into a scratch tool dir: `vita --version`, `vita tools list`, `vita init --kit` (the wheel carries
   templates, kit, tools.toml, deps.toml, ps1/), `vita scan`, `vita vpk check` all work.

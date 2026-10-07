@@ -21,6 +21,7 @@ What the profile does (vitaport_sim.c / vitaport_alloc.cpp):
 
 Output in build-sim/vita-sim/<time>/: stdout.txt, stderr.txt, vitaport.log, stats.json (frames, fps, peak memory,
 budget, OOM), screenshots. A crash or an OOM gives exit code 1; being killed at the timeout doesn't.
+The simulation build uses `vita build`'s job limit and watchdog ([build] jobs, timeout_min, stall_min; -j).
 Never kills by name: only the PID it started.
 """
 from __future__ import annotations
@@ -29,6 +30,7 @@ import datetime as dt
 import json
 import os
 import shutil
+import sys
 import time
 from pathlib import Path
 
@@ -60,8 +62,8 @@ def mirror(src: Path, dst: Path) -> int:
     return n
 
 
-def build_sim(root: Path, cfg: dict, config: str, extra: list[str]) -> dict:
-    from vita_porter.build import defines, parse_errors, run_logged
+def build_sim(root: Path, cfg: dict, config: str, extra: list[str], jobs: int | None = None) -> dict:
+    from vita_porter.build import build_limits, defines, job_count, parse_errors, run_logged
     s = cfg.get("sim", {})
     out = root / s.get("build_dir", "build-sim")
     out.mkdir(parents=True, exist_ok=True)
@@ -72,16 +74,21 @@ def build_sim(root: Path, cfg: dict, config: str, extra: list[str]) -> dict:
     gen = cfg.get("build", {}).get("generator") or ""
     opts = list(s.get("options", ["-DVITA_SIM=ON"])) + [f"-D{x}" if not x.startswith("-D") else x for x in extra]
     dfs = [d for d in defines(root, cfg, root.as_posix()) if d.split("=")[0][2:] in ("VITA_DATA_FOLDER", "VITA_ASSETS_MODE", "VITA_ASSETS_VPK_DIR")]
+    njobs, jobs_why = job_count(cfg, jobs)    # never a bare --parallel: that's an unbounded `make -j`
+    timeout, stall = build_limits(cfg)
+    status: dict = {}
+    print(f"vita sim: building, {jobs_why}", file=sys.stderr, flush=True)
     t0 = time.time()
     with open(logp, "w", encoding="utf-8", newline="\n") as log:
         rc = run_logged(["cmake", "-S", str(src), "-B", str(out), f"-DCMAKE_BUILD_TYPE={config}", *(["-G", gen] if gen else []), *dfs, *opts],
-                        root, log)
+                        root, log, timeout, stall, status)
         stage = "configure"
         if rc == 0:
             stage = "build"
-            rc = run_logged(["cmake", "--build", str(out), "--config", config, "--parallel"], root, log)
+            rc = run_logged(["cmake", "--build", str(out), "--config", config, "--parallel", str(njobs)], root, log, timeout, stall, status)
     errors, nerr, _ = parse_errors(logp.read_text(encoding="utf-8", errors="replace"))
-    return dict(ok=rc == 0, stage=stage, exit_code=rc, seconds=round(time.time() - t0, 1), errors=errors, error_count=nerr, log=rel(root, logp))
+    return dict(ok=rc == 0, stage=stage, exit_code=rc, seconds=round(time.time() - t0, 1), errors=errors, error_count=nerr, log=rel(root, logp),
+                jobs=njobs, jobs_reason=jobs_why, killed=status.get("killed"))
 
 
 def find_exe(root: Path, cfg: dict, override: str | None) -> Path:
@@ -171,7 +178,7 @@ def main(a):
     if not a.no_build:
         if not shutil.which("cmake"):
             usage("cmake is not on PATH (see `vita tools check`)")
-        b = build_sim(root, cfg, a.config, a.define or [])
+        b = build_sim(root, cfg, a.config, a.define or [], a.jobs)
         res["build"] = b
         if not b["ok"]:
             res["ok"] = False
@@ -197,7 +204,8 @@ def _report(res: dict, as_json: bool) -> int:
         if b["ok"]:
             print(f"simulation build OK ({b['seconds']} s). Log: {b['log']}")
         else:
-            print(f"simulation {b['stage']} FAILED (exit {b['exit_code']}). Full log: {b['log']}")
+            print(f"simulation {b['stage']} {'KILLED: it ' + b['killed'] if b.get('killed') else 'FAILED'} (exit {b['exit_code']}). "
+                  f"Full log: {b['log']}")
             for e in b["errors"]:
                 print(f"  {(e.get('file') or '') + (':' + str(e['line']) if e.get('line') else '')}: {e['message']}")
     r = res.get("run")
@@ -236,6 +244,7 @@ def register(sub):
     p.add_argument("--enter", choices=["cross", "circle"], default="cross", help="the simulated system confirm button")
     p.add_argument("--config", default="RelWithDebInfo", choices=["Debug", "Release", "RelWithDebInfo"])
     p.add_argument("-D", "--define", action="append", help="extra CMake cache entry for the simulation build")
+    p.add_argument("-j", "--jobs", type=int, help="parallel compile jobs for the simulation build (default as `vita build`)")
     p.add_argument("--exe", help="executable to run instead of [sim] exe")
     p.add_argument("--no-build", action="store_true", help="run the existing build")
     p.add_argument("--no-convert", action="store_true", help="don't run `vita assets convert` first")

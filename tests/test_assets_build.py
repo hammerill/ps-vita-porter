@@ -187,3 +187,62 @@ def test_example_vita_toml_matches_the_code():
     cfg = tomllib.loads((ROOT / "examples" / "lumen-drift" / "vita.toml").read_text())
     assert cfg["app"]["title_id"] == "LMDR00001" and cfg["app"]["assets"] == "embedded"
     assert "VP_DATA_FOLDER" in (ROOT / "examples" / "lumen-drift" / "src" / "platform" / "vita_input.h").read_text()
+
+
+def test_job_count_is_never_unbounded(monkeypatch):
+    monkeypatch.setattr(build, "cpu_count", lambda: 12)
+    monkeypatch.setattr(build, "mem_available", lambda: int(7.6 * build.GIB))
+    monkeypatch.delenv("CMAKE_BUILD_PARALLEL_LEVEL", raising=False)
+    assert build.job_count({}, None)[0] == 7                              # min(12 CPUs, 7 GiB)
+    monkeypatch.setenv("CMAKE_BUILD_PARALLEL_LEVEL", "32")
+    n, why = build.job_count({}, None)
+    assert n == 11 and "32 jobs" in why and "-> 11 jobs" in why            # 7.6 GiB / 700 MiB
+    assert build.job_count({"build": {"jobs": 3}}, None)[0] == 3           # vita.toml before the environment
+    n, why = build.job_count({}, 40)
+    assert n == 40 and "warning" in why                                    # --jobs is obeyed, with a warning
+    monkeypatch.setattr(build, "mem_available", lambda: None)
+    monkeypatch.delenv("CMAKE_BUILD_PARALLEL_LEVEL")
+    assert build.job_count({}, None)[0] == 12
+    monkeypatch.setattr(build, "mem_available", lambda: 300 << 20)
+    assert build.job_count({}, None)[0] == 1
+
+
+def test_build_passes_an_explicit_job_count(monkeypatch, repo):
+    vita("init", "--no-hook", cwd=repo)
+    make(repo, {"CMakeLists.txt": "project(x)\n"})
+    sdk = repo / "sdk"
+    (sdk / "share").mkdir(parents=True)
+    monkeypatch.setattr(build, "vitasdk_dir", lambda: sdk)
+    monkeypatch.setattr(build, "job_count", lambda cfg, cli: (5, "5 jobs (test)"))
+    cmds = []
+    monkeypatch.setattr(build, "run_logged", lambda cmd, *a, **k: cmds.append(cmd) or 0)
+    r = build.build(repo, "native")
+    assert cmds[1][:5] == ["cmake", "--build", str(repo / "build-vita"), "--parallel", "5"]
+    assert r["jobs"] == 5 and not (repo / "build-vita" / ".vita-build-running").exists()
+
+
+def test_run_logged_kills_a_silent_build(tmp_path):
+    import sys
+    import time
+    status: dict = {}
+    t0 = time.time()
+    with open(tmp_path / "log", "w") as log:
+        rc = build.run_logged([sys.executable, "-c", "print('compiling', flush=True); import time; time.sleep(60)"], tmp_path, log,
+                              stall=1, status=status)
+    assert rc != 0 and "printed nothing" in status["killed"] and time.time() - t0 < 20
+    text = (tmp_path / "log").read_text()
+    assert "compiling" in text and "@@vita: killed" in text
+
+
+def test_recovery_after_a_build_that_never_finished(tmp_path):
+    out = tmp_path / "build-vita"
+    d = out / "SDL" / "CMakeFiles" / "SDL3-static.dir"
+    d.mkdir(parents=True)
+    good, bad = d / "cmake_pch.hxx.gch", d / "cmake_pch.h.gch"
+    good.write_bytes(b"gpch+014" + b"\0" * 64)
+    bad.write_bytes(b"\x13\x37" * 64)                                      # what a killed compiler leaves
+    notes = build.recover(tmp_path, out, out / ".vita-build-running")
+    assert not bad.exists() and good.exists() and "corrupt" in notes[0]
+    (out / ".vita-build-running").write_text("999999999\n")                # a dead PID: the machine went down
+    notes = build.recover(tmp_path, out, out / ".vita-build-running")
+    assert not good.exists() and "never finished" in notes[0]

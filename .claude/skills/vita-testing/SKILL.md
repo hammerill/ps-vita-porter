@@ -13,6 +13,12 @@ intermediate build on hardware.
 vita build && vita vpk check build-vita/<game>.vpk && vita livearea check
 ```
 `vita build --json` gives `{ok, vpk, elf, unresolved, errors}`; fix the first error, rebuild.
+Compile jobs are bounded by available memory (about 1 GiB per heavy C++ job); `vita build` prints the
+count and why. On WSL or a small machine, a first build of big libraries can still run out of memory: lower it
+(`-j 2`, `[build] jobs`), or ask the user to raise WSL's memory (`%UserProfile%\.wslconfig`: `[wsl2]`
+`memory=12GB`, `swap=8GB`, then `wsl --shutdown`). Never run a bare `cmake --build --parallel` yourself: that's
+an unbounded `make -j`. A build killed by its timeout/stall watchdog says so (`killed` in `--json`); the next
+build cleans up the precompiled headers it may have left half-written.
 
 ## PC simulation
 ```bash

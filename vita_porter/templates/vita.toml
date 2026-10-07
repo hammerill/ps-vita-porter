@@ -20,6 +20,9 @@ backend = "auto"                  # auto (native if $VITASDK is valid, else Dock
 build_dir = "build-vita"
 config = "Release"
 generator = ""                    # e.g. "Ninja"; empty = CMake's default
+jobs = 0                          # parallel compile jobs; 0 = min(CPUs, available GiB). Never unbounded (`make -j` can take WSL down)
+timeout_min = 120                 # kill the whole build after this many minutes (0 = off)
+stall_min = 15                    # kill it after this many minutes without output (0 = off)
 options = []                      # extra -D options for the Vita configure, e.g. ["-DGAME_NO_NETWORK=ON"]
 docker_image = "vitasdk/vitasdk:latest"
 vdpm = []                         # vdpm packages the port needs, e.g. ["sdl2", "vitaGL"]; `vita tools check` checks them
