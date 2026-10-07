@@ -63,6 +63,8 @@ class FakeFTP:
         FakeFTP.dirs.append(d)
 
     def storbinary(self, cmd, fh):
+        if cmd.split(" ", 1)[1] in FakeFTP.dirs:
+            raise ftplib.error_perm("550 File not found.")
         FakeFTP.store[cmd.split(" ", 1)[1]] = fh.read()
 
     def retrbinary(self, cmd, cb):
@@ -125,6 +127,7 @@ def test_deploy_vpk_promotes_or_copies_the_vpk(tmp_path, monkeypatch):
     FakeFTP.store.clear()
     r = device.deploy(tmp_path, cfg, device.device(cfg, None), {"vpk"}, None, yes=True)
     assert r["ok"] and not r["promote"] and r["uploaded"] == 1 and "VitaShell" in r["note"]
+    assert "/ux0:/game.vpk" not in FakeFTP.dirs
     assert FakeFTP.store["/ux0:/game.vpk"] == (tmp_path / "build-vita" / "game.vpk").read_bytes()
     assert srv.lines == ["help"]
 

@@ -91,8 +91,9 @@ def ftp_mkdirs(f: ftplib.FTP, vita_dir: str):
 
 
 def ftp_put(f: ftplib.FTP, data: bytes, vita_file: str):
-    parent = vita_file.rsplit("/", 1)[0]
-    ftp_mkdirs(f, parent)
+    drive, _, rest = vita_file.partition(":")
+    if "/" in rest.strip("/"):   # a file at the drive root (ux0:x.vpk) needs no folders
+        ftp_mkdirs(f, f"{drive}:{rest.strip('/').rsplit('/', 1)[0]}")
     f.storbinary(f"STOR {ftp_path(vita_file)}", io.BytesIO(data))
 
 
